@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>CamanJS</title>
+    <style>
+        body {
+            text-align: center;
+        }
+		.canvas-box {
+			width: 600px;
+			height: 600px;
+			margin: 30px auto 0;
+		}
+        canvas {
+            display: block;
+        }
+
+        .filters {
+            max-width: 600px;
+            margin: 10px auto 0;
+        }
+    </style>
+</head>
+<body>
+<a href="http://camanjs.com/examples/" target="_blank">CamanJS Home</a>
+<a href="https://demo.tutorialzine.com/2013/02/instagram-filter-app/" target="_blank">instagram-filter-app</a>
+<div class="canvas-box">
+	<canvas class="playground"></canvas>
+</div>
+
+<div class="filters">
+    <button data-preset="vintage">Vintage</button>
+    <button data-preset="lomo">Lomo</button>
+    <button data-preset="clarity">Clarity</button>
+    <button data-preset="sinCity">Sin City</button>
+    <button data-preset="sunrise">Sunrise</button>
+    <button data-preset="crossProcess">Cross Process</button>
+    <button data-preset="orangePeel">Orange Peel</button>
+    <button data-preset="love">Love</button>
+    <button data-preset="grungy">Grungy</button>
+    <button data-preset="jarques">Jarques</button>
+    <button data-preset="pinhole">Pinhole</button>
+    <button data-preset="oldBoot">Old Boot</button>
+    <button data-preset="glowingSun">Glowing Sun</button>
+    <button data-preset="hazyDays">Hazy Days</button>
+    <button data-preset="herMajesty">Her Majesty</button>
+    <button data-preset="nostalgia">Nostalgia</button>
+    <button data-preset="hemingway">Hemingway</button>
+    <button data-preset="concentrate">Concentrate</button>
+    <button data-preset="reset">Reset</button>
+</div>
+<script src="caman.full.min.js"></script>
+<script type="text/javascript">
+const containter = document.querySelector('.canvas-box');
+const canvas = document.querySelector('.playground');
+const ctx = canvas.getContext('2d');
+
+/**
+* 캔버스 크기 지정
+*
+* @param {HTMLCanvasElement} 캔버스
+* @param {number} [width=window.innerWidth] 너비 (기본값: 창 너비)
+* @param {number} [height=window.innerHeight] 높이 (기본값: 창 높이)
+*/
+function setCanvasSize(canvas, width = containter.clientWidth, height = containter.clientHeight) {
+    canvas.width = width;
+    canvas.height = height;
+}
+
+/**
+* 캔버스 내용 지우기
+*
+* @param {CanvasRenderingContext2D} ctx 2D 캔버스 렌더링 컨텍스트
+*/
+function clear(ctx) {
+    const { canvas } = ctx;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+/**
+* 화면에 맞추기
+*
+* @param {CanvasRenderingContext2D} ctx 2D 캔버스 렌더링 컨텍스트
+* @param {HTMLImageElement} img 이미지 요소
+*/
+function fit(ctx, img) {
+    const { canvas } = ctx;
+    const { clientWidth, clientHeight } = containter;
+    const { naturalWidth, naturalHeight } = img;
+
+    let width = naturalWidth;
+    let height = naturalHeight;
+
+    if (naturalHeight > naturalWidth && naturalHeight > clientHeight) {
+        width = clientHeight * (naturalWidth / naturalHeight);
+        height = width * (naturalHeight / naturalWidth);
+    } else if (naturalWidth > naturalHeight  && naturalWidth > clientWidth) {
+        height = clientWidth * (naturalHeight / naturalWidth);
+        width = height * (naturalWidth / naturalHeight);
+    }
+
+    setCanvasSize(canvas, width, height);
+	centerOffset(ctx, img);
+    clear(ctx);
+    ctx.drawImage(img, 0, 0, width, height);
+}
+
+/**
+ * 중앙에 맞추기
+ *
+ */
+function centerOffset(ctx, img) {
+  const { canvas } = ctx;
+  const { innerWidth, innerHeight } = window;
+  const canvasWidth = canvas.width;
+
+  canvas.style.left = (innerWidth < canvasWidth) ? 0 : (innerWidth / 2) - (canvasWidth / 2) + 'px';
+}
+
+/**
+* 클릭 상태값
+*
+* @type {boolean}
+*/
+let status = false;
+
+// 버튼 클릭 시 해당 필터 호출
+// `<element data-preset="vintage">` 클릭 시 `Caman.Filter.register("vintage")` 호출
+document.addEventListener('click', e => {
+    const { target } = e;
+    const actionName = !!target.dataset && target.dataset.preset;
+	const actionTxt = target.innerHTML;
+
+    if (typeof actionName === 'string' && actionName !== 'reset') {
+		if(!status) {
+			status = true;
+            Caman(canvas, function(){
+                this.revert(false);
+                target.innerHTML = 'Rendering...';
+                this[actionName]();
+                this.render(function() {
+                    target.innerHTML = actionTxt;
+                    status = false;
+                });
+            });
+        }
+    } else if (typeof actionName === 'string' && actionName === 'reset') {
+		if(!status) {
+			status = true;
+			Caman(canvas, function(){
+				this.revert(true);
+				status = false;
+			});
+		}
+	}
+});
+
+/**
+* 이미지 생성
+*
+* @param {string} url 이미지 경로
+* @return {Promise} 이미지 로드 완료 후 resolve 되는 Promise 객체
+*/
+function makeImage(url) {
+    return new Promise((resolve, reject) => {
+        const img = document.createElement('img');
+
+        img.onload = () => {
+          img.onload = null;
+          img.onerror = null;
+          resolve(img);
+        };
+
+        img.onerror = () => {
+          img.onload = null;
+          img.onerror = null;
+          reject('이미지를 로드할 수 없습니다.');
+        };
+
+        img.alt = '';
+        img.src = url;
+    });
+}
+
+/**
+* 이미지 경로
+*
+* @type {string}
+*/
+const imageUrl = 'sample.jpg';
+
+const promisedImg = makeImage(imageUrl);
+let img;
+
+// 이미지가 로드되면 `fit()` 호출
+promisedImg.then(el => {
+    img = el;
+    fit(ctx, img);
+});
+
+</script>
+</body>
+</html>
