@@ -13,6 +13,7 @@
 		}
         canvas {
             display: block;
+			margin: 0 auto;
         }
 
         .filters {
@@ -100,21 +101,8 @@ function fit(ctx, img) {
     }
 
     setCanvasSize(canvas, width, height);
-	centerOffset(ctx, img);
     clear(ctx);
     ctx.drawImage(img, 0, 0, width, height);
-}
-
-/**
- * 중앙에 맞추기
- *
- */
-function centerOffset(ctx, img) {
-  const { canvas } = ctx;
-  const { innerWidth, innerHeight } = window;
-  const canvasWidth = canvas.width;
-
-  canvas.style.left = (innerWidth < canvasWidth) ? 0 : (innerWidth / 2) - (canvasWidth / 2) + 'px';
 }
 
 /**
